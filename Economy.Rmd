@@ -1,0 +1,169 @@
+it---
+title: "census data"
+author: "Lizz Arriaza"
+date: "May 3, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(haven)
+library(ggplot2)
+library(dplyr)
+library(boot)
+library(scales)
+```
+
+```{r}
+#How to read in a .sav file using the library haven
+df2<-read_sav("~/Desktop/Lizz/Spring19/CSCI498/May10Economy/Economy/economy.sav") 
+
+#in
+#how to look the names of the variables
+df3<- df2[, c(24,168,169,170,171,191,203,201)]
+```
+
+#cleaning the dataset
+```{r}
+
+df3$bi_var <- ifelse(df3$racecmb == 1, 1, 0)
+
+#how to chance contiouse variable to a fator varibale
+df3$income<-as.factor(df3$income)
+
+#how to label the levels of a factor variable
+levels(df3$income)<-c("<10","10-20","20-30","30-40","40-50","50-75","75-100","100-150",">150", "NA")
+
+#cleanin the sex varaiable
+df3$sex<- as.factor(df3$sex)
+levels(df3$sex)<- c("Male", "Female")
+
+
+#cleaning race
+df3$race1_1 <- as.factor(df3$race1_1)
+levels(df3$race1_1) <- c("White", "Black", "Asian", "Other", "NA")
+```
+
+Cleaning data: changed "income", "racecmb", "sex" variables from an integer to a factor. Then labeled the factors based off codebook to create a graph that describes the data accurately.
+
+Created a new bivariate variable from the race variable where 1 represented "white" and 0 represented "other".
+
+#Univariate analysis
+```{r}
+
+ggplot(df3, aes(x=income))+geom_bar(fill="darkorchid1")+xlab("Income per thousand")+geom_text(stat = 'count', aes(label =..count..), vjust=-.2)
+```
+This bar chart represents the amount of people that answered the question about the level of income per year that they earn in thousands of dollars. The last bar "NA" represents the number of people that declined to answer the question. 
+
+From the 2,967 people in the survey about 400 denied to answer the question. The highest count was for people earning between \$50,000 and \$70,000 dollars a year. The lowest count was the bar that respresents the people earning over \$150,000 dollars a year with a count of about 175.
+
+```{r}
+ggplot(df3, aes(x=income))+geom_bar(aes(y=..count../sum(..count..)),fill="deeppink4")+xlab("Income per thousand")
+
+
+```
+
+
+This bar chart represents the percentages of people in each category of income in thousands of dollars per year. The last bar "NA" represents the percentage of people that declined to answer the question. We can see that more than 13% of people participating (2,967) in the survey decided not to answer.
+
+The highest percentage of people were those earning between \$50,000 and \$70,000 dollars a year. The lowest percentage was the bar that respresents the people earning over \$150,000 dollars a year with a percentage less than 6%.
+
+
+
+
+#Bivariate analysis
+```{r}
+
+df3 %>% group_by(sex) %>% summarise(mean= mean(income)) 
+                              
+ggplot(df3, aes(x= income, fill=sex))+geom_bar(position = position_dodge())
+
+
+```
+
+
+
+
+#Multivariate analysis
+
+```{r}
+ggplot(df3, aes(x= income, y= race1_1, fill=sex))+geom_boxplot()
+names(df3)
+df4<-df3[,c(1,2,6)]
+mat<-as.matrix(df4)
+heatmap(mat, Rowv=NA, Colv=NA, col = cm.colors(256), scale="column", margins=c(5,10))
+```
+
+
+#Statistical testing
+
+```{r}
+library(corrplot)
+
+#test to see if there is a relationship between sex and income
+test<-chisq.test(df3$sex, df3$income)
+corrplot(test$residuals, is.corr = F)
+
+#test to see if there is a relationship between race and income
+test2<-chisq.test(df3$race1_1, df3$income)
+corrplot(test2$residuals, is.corr = F)
+
+```
+
+
+
+# Eddie's section
+
+```{r}
+
+model <- glm(bi_var ~ income, data = df3, family = "binomial")
+pander::pander(summary(model))
+
+```
+
+#Jerry's section
+
+```{r}
+
+set.seed(15)
+cv.error = cv.glm(df3, model, K=10)$delta[1]
+
+```
+
+Bootstrap Methods
+
+```{r}
+
+boot.fn <- function(data, index)
+{
+  return(coef(glm(bi_var ~ income, data = df3, family = "binomial", subset = index)))
+}
+
+boot(df3, boot.fn,1000)
+
+co <- boot (df3, boot.fn,1000)
+
+
+
+
+```
+
+```{r}
+
+library(tree)
+tree.bebe <- tree(bi_var ~ ., df3)
+
+summary(tree.bebe)
+
+```
+
+
+
+
+
+
+
+
+
+
+
